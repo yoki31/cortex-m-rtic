@@ -45,9 +45,13 @@ pub fn codegen(
                 pub cs: rtic::export::CriticalSection<#lt>
             ));
 
+            fields.push(quote!(poster: Poster));
+
             values.push(quote!(cs: rtic::export::CriticalSection::new()));
 
             values.push(quote!(core));
+
+            values.push(quote!(poster: Poster));
         }
 
         Context::Idle => {}
@@ -223,6 +227,32 @@ pub fn codegen(
 
         let internal_spawn_ident = util::internal_task_ident(name, "spawn");
 
+        let dequeue = if cfg!(feature = "memory-watermark") {
+            let update_watermark = util::mark_internal_name("update_watermark");
+            let capacity = spawnee.args.capacity;
+            module_items.push(quote!(
+                static WATERMARK: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
+                pub fn #update_watermark(fq_len: u8) {
+                    let new_usage = #capacity - fq_len;
+                    if new_usage > WATERMARK.load(core::sync::atomic::Ordering::Relaxed) {
+                        WATERMARK.store(new_usage, core::sync::atomic::Ordering::Relaxed)
+                    }
+                }
+
+                pub fn max_buffer_usage() -> u8 {
+                    WATERMARK.load(core::sync::atomic::Ordering::Relaxed)
+                }
+            ));
+
+            quote!({
+                let index = #fq.get_mut_unchecked().dequeue();
+                #name::#update_watermark(#fq.get_unchecked().len());
+                index
+            })
+        } else {
+            quote!(#fq.get_mut_unchecked().dequeue())
+        };
+
         // Spawn caller
         items.push(quote!(
 
@@ -232,7 +262,7 @@ pub fn codegen(
             let input = #tupled;
 
             unsafe {
-                if let Some(index) = rtic::export::interrupt::free(|_| #fq.get_mut_unchecked().dequeue()) {
+                if let Some(index) = rtic::export::interrupt::free(|_| #dequeue) {
                     #inputs
                         .get_mut_unchecked()
                         .get_unchecked_mut(usize::from(index))
