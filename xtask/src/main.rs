@@ -91,6 +91,8 @@ fn main() -> anyhow::Result<()> {
             path.map(|p| p.path().file_stem().unwrap().to_str().unwrap().to_string())
                 .ok()
         })
+        // HACK this needs a Cargo feature to compile
+        .filter(|path| !path.contains("actor-watermark"))
         .collect();
 
     // let examples = &[
