@@ -84,6 +84,7 @@ pub fn codegen(app: &App, analysis: &Analysis, extra: &Extra) -> Vec<TokenStream
             None
         }
     }) {
+        dbg!(priority, name);
         // Compile time assert that this priority is supported by the device
         stmts.push(quote!(let _ = [(); ((1 << #nvic_prio_bits) - #priority as usize)];));
 
@@ -95,7 +96,12 @@ pub fn codegen(app: &App, analysis: &Analysis, extra: &Extra) -> Vec<TokenStream
 
     // Initialize monotonic's interrupts
     for (_, monotonic) in &app.monotonics {
-        let priority = &monotonic.args.priority;
+        // XXX taken from PR 529
+        let priority = if let Some(prio) = monotonic.args.priority {
+            quote! { #prio }
+        } else {
+            quote! { (1 << #nvic_prio_bits) }
+        };
         let binds = &monotonic.args.binds;
 
         // Compile time assert that this priority is supported by the device
