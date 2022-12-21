@@ -27,8 +27,14 @@ pub fn codegen(
         let mangled_name = util::static_local_resource_ident(name);
 
         let attrs = &res.attrs;
+
         // late resources in `util::link_section_uninit`
-        let section = util::link_section_uninit();
+        // unless user specifies custom link section
+        let section = if attrs.iter().any(|attr| attr.path.is_ident("link_section")) {
+            None
+        } else {
+            Some(util::link_section_uninit())
+        };
 
         // For future use
         // let doc = format!(" RTIC internal: {}:{}", file!(), line!());
@@ -51,7 +57,7 @@ pub fn codegen(
         let expr = &task_local.expr;
         let attrs = &task_local.attrs;
 
-        let mangled_name = util::declared_static_local_resource_ident(resource_name, &task_name);
+        let mangled_name = util::declared_static_local_resource_ident(resource_name, task_name);
 
         // For future use
         // let doc = format!(" RTIC internal: {}:{}", file!(), line!());

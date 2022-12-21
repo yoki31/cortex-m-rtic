@@ -1,8 +1,8 @@
+use crate::{analyze::Analysis, check::Extra, codegen::util};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use rtic_syntax::{analyze::Ownership, ast::App};
-
-use crate::{analyze::Analysis, check::Extra, codegen::util};
+use std::collections::HashMap;
 
 /// Generates `static` variables and shared resource proxies
 pub fn codegen(
@@ -21,11 +21,17 @@ pub fn codegen(
     for (name, res) in &app.shared_resources {
         let cfgs = &res.cfgs;
         let ty = &res.ty;
-        let mangled_name = &util::static_shared_resource_ident(&name);
+        let mangled_name = &util::static_shared_resource_ident(name);
+
+        let attrs = &res.attrs;
 
         // late resources in `util::link_section_uninit`
-        let section = util::link_section_uninit();
-        let attrs = &res.attrs;
+        // unless user specifies custom link section
+        let section = if attrs.iter().any(|attr| attr.path.is_ident("link_section")) {
+            None
+        } else {
+            Some(util::link_section_uninit())
+        };
 
         // For future use
         // let doc = format!(" RTIC internal: {}:{}", file!(), line!());
@@ -75,8 +81,7 @@ pub fn codegen(
             );
 
             let ceiling = match analysis.ownerships.get(name) {
-                Some(Ownership::Owned { priority }) => *priority,
-                Some(Ownership::CoOwned { priority }) => *priority,
+                Some(Ownership::Owned { priority } | Ownership::CoOwned { priority }) => *priority,
                 Some(Ownership::Contended { ceiling }) => *ceiling,
                 None => 0,
             };
@@ -89,9 +94,9 @@ pub fn codegen(
                 cfgs,
                 true,
                 &shared_name,
-                quote!(#ty),
+                &quote!(#ty),
                 ceiling,
-                ptr,
+                &ptr,
             ));
         }
     }
@@ -105,6 +110,87 @@ pub fn codegen(
             #(#mod_resources)*
         })
     };
+
+    // Computing mapping of used interrupts to masks
+    let interrupt_ids = analysis.interrupts.iter().map(|(p, (id, _))| (p, id));
+
+    let mut prio_to_masks = HashMap::new();
+    let device = &extra.device;
+    let mut uses_exceptions_with_resources = false;
+
+    let mut mask_ids = Vec::new();
+
+    for (&priority, name) in interrupt_ids.chain(app.hardware_tasks.values().flat_map(|task| {
+        if !util::is_exception(&task.args.binds) {
+            Some((&task.args.priority, &task.args.binds))
+        } else {
+            // If any resource to the exception uses non-lock-free or non-local resources this is
+            // not allwed on thumbv6.
+            uses_exceptions_with_resources = uses_exceptions_with_resources
+                || task
+                    .args
+                    .shared_resources
+                    .iter()
+                    .map(|(ident, access)| {
+                        if access.is_exclusive() {
+                            if let Some(r) = app.shared_resources.get(ident) {
+                                !r.properties.lock_free
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    })
+                    .any(|v| v);
+
+            None
+        }
+    })) {
+        #[allow(clippy::or_fun_call)]
+        let v = prio_to_masks.entry(priority - 1).or_insert(Vec::new());
+        v.push(quote!(#device::Interrupt::#name as u32));
+        mask_ids.push(quote!(#device::Interrupt::#name as u32));
+    }
+
+    // Call rtic::export::create_mask([Mask; N]), where the array is the list of shifts
+
+    let mut mask_arr = Vec::new();
+    // NOTE: 0..3 assumes max 4 priority levels according to M0, M23 spec
+    for i in 0..3 {
+        let v = if let Some(v) = prio_to_masks.get(&i) {
+            v.clone()
+        } else {
+            Vec::new()
+        };
+
+        mask_arr.push(quote!(
+            rtic::export::create_mask([#(#v),*])
+        ));
+    }
+
+    // Generate a constant for the number of chunks needed by Mask.
+    let chunks_name = util::priority_mask_chunks_ident();
+    mod_app.push(quote!(
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        const #chunks_name: usize = rtic::export::compute_mask_chunks([#(#mask_ids),*]);
+    ));
+
+    let masks_name = util::priority_masks_ident();
+    mod_app.push(quote!(
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        const #masks_name: [rtic::export::Mask<#chunks_name>; 3] = [#(#mask_arr),*];
+    ));
+
+    if uses_exceptions_with_resources {
+        mod_app.push(quote!(
+            #[doc(hidden)]
+            #[allow(non_upper_case_globals)]
+            const __rtic_internal_V6_ERROR: () = rtic::export::no_basepri_panic();
+        ));
+    }
 
     (mod_app, mod_resources)
 }

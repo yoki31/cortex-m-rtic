@@ -1,4 +1,4 @@
-//! examples/periodic.rs
+//! examples/periodic-at.rs
 
 #![deny(unsafe_code)]
 #![deny(warnings)]
@@ -26,16 +26,16 @@ mod app {
         let systick = cx.core.SYST;
 
         // Initialize the monotonic (SysTick rate in QEMU is 12 MHz)
-        let mono = Systick::new(systick, 12_000_000);
+        let mut mono = Systick::new(systick, 12_000_000);
 
-        foo::spawn_after(1.secs()).unwrap();
+        foo::spawn_after(1.secs(), mono.now()).unwrap();
 
         (Shared {}, Local {}, init::Monotonics(mono))
     }
 
     #[task(local = [cnt: u32 = 0])]
-    fn foo(cx: foo::Context) {
-        hprintln!("foo").ok();
+    fn foo(cx: foo::Context, instant: fugit::TimerInstantU64<100>) {
+        hprintln!("foo {:?}", instant).ok();
         *cx.local.cnt += 1;
 
         if *cx.local.cnt == 4 {
@@ -43,6 +43,7 @@ mod app {
         }
 
         // Periodic ever 1 seconds
-        foo::spawn_after(1.secs()).unwrap();
+        let next_instant = instant + 1.secs();
+        foo::spawn_at(next_instant, next_instant).unwrap();
     }
 }

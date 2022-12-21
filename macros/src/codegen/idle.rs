@@ -68,7 +68,7 @@ pub fn codegen(
             #[allow(non_snake_case)]
             fn #name(#context: #name::Context) -> ! {
                 use rtic::Mutex as _;
-                use rtic::mutex_prelude::*;
+                use rtic::mutex::prelude::*;
 
                 #(#stmts)*
             }
@@ -85,7 +85,7 @@ pub fn codegen(
             vec![],
             None,
             quote!(loop {
-                rtic::export::wfi()
+                rtic::export::nop()
             }),
         )
     }

@@ -16,7 +16,7 @@ pub fn capacity_literal(capacity: usize) -> LitInt {
 
 /// Identifier for the free queue
 pub fn fq_ident(task: &Ident) -> Ident {
-    mark_internal_name(&format!("{}_FQ", task.to_string()))
+    mark_internal_name(&format!("{}_FQ", task))
 }
 
 /// Generates a `Mutex` implementation
@@ -25,9 +25,9 @@ pub fn impl_mutex(
     cfgs: &[Attribute],
     resources_prefix: bool,
     name: &Ident,
-    ty: TokenStream2,
+    ty: &TokenStream2,
     ceiling: u8,
-    ptr: TokenStream2,
+    ptr: &TokenStream2,
 ) -> TokenStream2 {
     let (path, priority) = if resources_prefix {
         (quote!(shared_resources::#name), quote!(self.priority()))
@@ -36,6 +36,7 @@ pub fn impl_mutex(
     };
 
     let device = &extra.device;
+    let masks_name = priority_masks_ident();
     quote!(
         #(#cfgs)*
         impl<'a> rtic::Mutex for #path<'a> {
@@ -52,6 +53,7 @@ pub fn impl_mutex(
                         #priority,
                         CEILING,
                         #device::NVIC_PRIO_BITS,
+                        &#masks_name,
                         f,
                     )
                 }
@@ -76,7 +78,7 @@ pub fn interrupt_ident() -> Ident {
 }
 
 pub fn timer_queue_marker_ident() -> Ident {
-    mark_internal_name(&"TIMER_QUEUE_MARKER")
+    mark_internal_name("TIMER_QUEUE_MARKER")
 }
 
 /// Whether `name` is an exception with configurable priority
@@ -103,17 +105,12 @@ pub fn mark_internal_name(name: &str) -> Ident {
 
 /// Generate an internal identifier for monotonics
 pub fn internal_monotonics_ident(task: &Ident, monotonic: &Ident, ident_name: &str) -> Ident {
-    mark_internal_name(&format!(
-        "{}_{}_{}",
-        task.to_string(),
-        monotonic.to_string(),
-        ident_name,
-    ))
+    mark_internal_name(&format!("{}_{}_{}", task, monotonic, ident_name,))
 }
 
 /// Generate an internal identifier for tasks
 pub fn internal_task_ident(task: &Ident, ident_name: &str) -> Ident {
-    mark_internal_name(&format!("{}_{}", task.to_string(), ident_name))
+    mark_internal_name(&format!("{}_{}", task, ident_name))
 }
 
 fn link_section_index() -> usize {
@@ -122,11 +119,11 @@ fn link_section_index() -> usize {
     INDEX.fetch_add(1, Ordering::Relaxed)
 }
 
-// NOTE `None` means in shared memory
-pub fn link_section_uninit() -> Option<TokenStream2> {
+/// Add `link_section` attribute
+pub fn link_section_uninit() -> TokenStream2 {
     let section = format!(".uninit.rtic{}", link_section_index());
 
-    Some(quote!(#[link_section = #section]))
+    quote!(#[link_section = #section])
 }
 
 // Regroups the inputs of a task
@@ -225,7 +222,7 @@ pub fn rq_ident(priority: u8) -> Ident {
 
 /// Generates an identifier for the `enum` of `schedule`-able tasks
 pub fn schedule_t_ident() -> Ident {
-    Ident::new(&"SCHED_T", Span::call_site())
+    Ident::new("SCHED_T", Span::call_site())
 }
 
 /// Generates an identifier for the `enum` of `spawn`-able tasks
@@ -253,32 +250,34 @@ pub fn monotonic_ident(name: &str) -> Ident {
 }
 
 pub fn static_shared_resource_ident(name: &Ident) -> Ident {
-    mark_internal_name(&format!("shared_resource_{}", name.to_string()))
+    mark_internal_name(&format!("shared_resource_{}", name))
+}
+
+/// Generates an Ident for the number of 32 bit chunks used for Mask storage.
+pub fn priority_mask_chunks_ident() -> Ident {
+    mark_internal_name("MASK_CHUNKS")
+}
+
+pub fn priority_masks_ident() -> Ident {
+    mark_internal_name("MASKS")
 }
 
 pub fn static_local_resource_ident(name: &Ident) -> Ident {
-    mark_internal_name(&format!("local_resource_{}", name.to_string()))
+    mark_internal_name(&format!("local_resource_{}", name))
 }
 
 pub fn declared_static_local_resource_ident(name: &Ident, task_name: &Ident) -> Ident {
-    mark_internal_name(&format!(
-        "local_{}_{}",
-        task_name.to_string(),
-        name.to_string()
-    ))
+    mark_internal_name(&format!("local_{}_{}", task_name, name))
 }
 
 pub fn need_to_lock_ident(name: &Ident) -> Ident {
-    Ident::new(
-        &format!("{}_that_needs_to_be_locked", name.to_string()),
-        name.span(),
-    )
+    Ident::new(&format!("{}_that_needs_to_be_locked", name), name.span())
 }
 
 /// The name to get better RT flag errors
 pub fn rt_err_ident() -> Ident {
     Ident::new(
-        &"you_must_enable_the_rt_feature_for_the_pac_in_your_cargo_toml",
+        "you_must_enable_the_rt_feature_for_the_pac_in_your_cargo_toml",
         Span::call_site(),
     )
 }

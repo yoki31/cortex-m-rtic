@@ -1,7 +1,4 @@
-//! Real-Time Interrupt-driven Concurrency (RTIC) framework for ARM Cortex-M microcontrollers
-//!
-//! **HEADS UP** This is an **beta** pre-release; there may be breaking changes in the API and
-//! semantics before a proper release is made.
+//! Real-Time Interrupt-driven Concurrency (RTIC) framework for ARM Cortex-M microcontrollers.
 //!
 //! **IMPORTANT**: This crate is published as [`cortex-m-rtic`] on crates.io but the name of the
 //! library is `rtic`.
@@ -17,19 +14,20 @@
 //!
 //! # Minimum Supported Rust Version (MSRV)
 //!
-//! This crate is guaranteed to compile on stable Rust 1.36 (2018 edition) and up. It *might*
-//! compile on older versions but that may change in any new patch release.
+//! This crate is compiled and tested with the latest toolchain (rolling) as of the release date.
+//! If you run into compilation errors, try the latest stable release of the rust toolchain.
 //!
 //! # Semantic Versioning
 //!
 //! Like the Rust project, this crate adheres to [SemVer]: breaking changes in the API and semantics
-//! require a *semver bump* (a new minor version release), with the exception of breaking changes
+//! require a *semver bump* (since 1.0.0 a new major version release), with the exception of breaking changes
 //! that fix soundness issues -- those are considered bug fixes and can be landed in a new patch
 //! release.
 //!
 //! [SemVer]: https://semver.org/spec/v2.0.0.html
 
 #![deny(missing_docs)]
+#![deny(rust_2021_compatibility)]
 #![deny(rust_2018_compatibility)]
 #![deny(rust_2018_idioms)]
 #![no_std]
@@ -38,11 +36,18 @@
     html_favicon_url = "https://raw.githubusercontent.com/rtic-rs/cortex-m-rtic/master/book/en/src/RTIC.svg"
 )]
 //deny_warnings_placeholder_for_ci
+#![allow(clippy::inline_always)]
 
 use cortex_m::{interrupt::InterruptNumber, peripheral::NVIC};
 pub use cortex_m_rtic_macros::app;
 pub use rtic_core::{prelude as mutex_prelude, Exclusive, Mutex};
 pub use rtic_monotonic::{self, Monotonic};
+
+/// module `mutex::prelude` provides `Mutex` and multi-lock variants. Recommended over `mutex_prelude`
+pub mod mutex {
+    pub use rtic_core::prelude;
+    pub use rtic_core::Mutex;
+}
 
 #[doc(hidden)]
 pub mod export;
@@ -57,7 +62,7 @@ pub fn pend<I>(interrupt: I)
 where
     I: InterruptNumber,
 {
-    NVIC::pend(interrupt)
+    NVIC::pend(interrupt);
 }
 
 use core::cell::UnsafeCell;
@@ -68,12 +73,12 @@ use core::cell::UnsafeCell;
 ///
 /// Soundness:
 /// 1) Unsafe API for internal use only
-/// 2) get_mut(&self) -> *mut T
+/// 2) ``get_mut(&self) -> *mut T``
 ///    returns a raw mutable pointer to the inner T
 ///    casting to &mut T is under control of RTIC
 ///    RTIC ensures &mut T to be unique under Rust aliasing rules.
 ///
-///    Implementation uses the underlying UnsafeCell<T>
+///    Implementation uses the underlying ``UnsafeCell<T>``
 ///    self.0.get() -> *mut T
 ///
 /// 3) get(&self) -> *const T
@@ -81,26 +86,34 @@ use core::cell::UnsafeCell;
 ///    casting to &T is under control of RTIC
 ///    RTIC ensures &T to be shared under Rust aliasing rules.
 ///
-///    Implementation uses the underlying UnsafeCell<T>
+///    Implementation uses the underlying ``UnsafeCell<T>``
 ///    self.0.get() -> *mut T, demoted to *const T
-///    
+///
 #[repr(transparent)]
 pub struct RacyCell<T>(UnsafeCell<T>);
 
 impl<T> RacyCell<T> {
-    /// Create a RacyCell
+    /// Create a ``RacyCell``
     #[inline(always)]
     pub const fn new(value: T) -> Self {
         RacyCell(UnsafeCell::new(value))
     }
 
     /// Get `*mut T`
+    ///
+    /// # Safety
+    ///
+    /// See documentation notes for [`RacyCell`]
     #[inline(always)]
     pub unsafe fn get_mut(&self) -> *mut T {
         self.0.get()
     }
 
     /// Get `*const T`
+    ///
+    /// # Safety
+    ///
+    /// See documentation notes for [`RacyCell`]
     #[inline(always)]
     pub unsafe fn get(&self) -> *const T {
         self.0.get()

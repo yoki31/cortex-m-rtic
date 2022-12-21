@@ -6,7 +6,7 @@ RTIC v0.4.0 was to allow inter-operation with other attributes. For example, the
 improve performance in some cases.
 
 > **IMPORTANT**: In general, the `link_section`, `export_name` and `no_mangle`
-> attributes are very powerful but also easy to misuse. Incorrectly using any of
+> attributes are powerful but also easy to misuse. Incorrectly using any of
 > these attributes can cause undefined behavior; you should always prefer to use
 > safe, higher level attributes around them like `cortex-m-rt`'s `interrupt` and
 > `exception` attributes.
@@ -35,11 +35,10 @@ One can look at the output of `cargo-nm` to confirm that `bar` ended in RAM
 
 ``` console
 $ cargo nm --example ramfunc --release | grep ' foo::'
-{{#include ../../../../ci/expected/ramfunc.grep.foo}}
+{{#include ../../../../ci/expected/ramfunc.run.grep.foo}}
 ```
 
 ``` console
 $ cargo nm --example ramfunc --release | grep ' bar::'
-{{#include ../../../../ci/expected/ramfunc.grep.bar}}
+{{#include ../../../../ci/expected/ramfunc.run.grep.bar}}
 ```
-

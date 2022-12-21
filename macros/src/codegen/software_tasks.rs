@@ -38,11 +38,12 @@ pub fn codegen(
         // Create free queues and inputs / instants buffers
         let fq = util::fq_ident(name);
 
+        #[allow(clippy::redundant_closure)]
         let (fq_ty, fq_expr, mk_uninit): (_, _, Box<dyn Fn() -> Option<_>>) = {
             (
                 quote!(rtic::export::SCFQ<#cap_lit_p1>),
                 quote!(rtic::export::Queue::new()),
-                Box::new(|| util::link_section_uninit()),
+                Box::new(|| Some(util::link_section_uninit())),
             )
         };
         mod_app.push(quote!(
@@ -130,7 +131,7 @@ pub fn codegen(
                 #[allow(non_snake_case)]
                 fn #name(#context: #name::Context #(,#inputs)*) {
                     use rtic::Mutex as _;
-                    use rtic::mutex_prelude::*;
+                    use rtic::mutex::prelude::*;
 
                     #(#stmts)*
                 }

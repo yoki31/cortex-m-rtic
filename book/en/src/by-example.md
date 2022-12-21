@@ -3,15 +3,36 @@
 This part of the book introduces the Real-Time Interrupt-driven Concurrency (RTIC) framework
 to new users by walking them through examples of increasing complexity.
 
-All examples in this part of the book can be found in the GitHub [repository] of
-the project. The examples can be run on QEMU (emulating a Cortex M3 target) so no special hardware
-is required to follow along.
+All examples in this part of the book are accessible at the
+[GitHub repository][repoexamples].
+The examples are runnable on QEMU (emulating a Cortex M3 target),
+thus no special hardware required to follow along.
 
-[repository]: https://github.com/rtic-rs/cortex-m-rtic
+[repoexamples]: https://github.com/rtic-rs/cortex-m-rtic/tree/master/examples
 
-To run the examples on your computer you'll need the `qemu-system-arm`
-program. Check [the embedded Rust book] for instructions on how to set up an
+To run the examples with QEMU you will need the `qemu-system-arm` program.
+Check [the embedded Rust book] for instructions on how to set up an
 embedded development environment that includes QEMU.
 
 [the embedded Rust book]: https://rust-embedded.github.io/book/intro/install.html
 
+To run the examples found in `examples/` locally, cargo needs a supported `target` and
+either `--examples` (run all examples) or `--example NAME` to run a specific example.
+
+Assuming dependencies in place, running:
+
+``` console
+$ cargo run --target thumbv7m-none-eabi --example locals
+```
+
+Yields this output:
+
+``` console
+{{#include ../../../ci/expected/locals.run}}
+```
+
+> **NOTE**: You can choose target device by passing a target
+> triple to cargo (e.g. `cargo run --example init --target thumbv7m-none-eabi`) or
+> configure a default target in `.cargo/config.toml`.
+>
+> For running the examples, we use a Cortex M3 emulated in QEMU, so the target is `thumbv7m-none-eabi`.

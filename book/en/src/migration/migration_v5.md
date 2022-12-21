@@ -1,10 +1,10 @@
-# Migrating from v0.5.x to v0.6.0
+# Migrating from v0.5.x to v1.0.0
 
-This section describes how to upgrade from v0.5.x to v0.6.0 of the RTIC framework.
+This section describes how to upgrade from v0.5.x to v1.0.0 of the RTIC framework.
 
 ## `Cargo.toml` - version bump
 
-Change the version of `cortex-m-rtic` to `"0.6.0"`.
+Change the version of `cortex-m-rtic` to `"1.0.0"`.
 
 ## `mod` instead of `const`
 
@@ -71,7 +71,7 @@ mod app {
 }
 ```
 
-## Move Dispatchers from `extern "C"` to app arguments.
+## Move Dispatchers from `extern "C"` to app arguments
 
 Change
 
@@ -112,7 +112,7 @@ struct Resources {
 }
 ```
 
-With RTIC v0.6.0 the resources structs are annotated similarly like
+With RTIC v1.0.0 the resources structs are annotated similarly like
 `#[task]`, `#[init]`, `#[idle]`: with the attributes `#[shared]` and `#[local]`
 
 ``` rust
@@ -131,7 +131,7 @@ These structs can be freely named by the developer.
 
 ## `shared` and `local` arguments in `#[task]`s
 
-In v0.6.0 resources are split between `shared` resources and `local` resources.
+In v1.0.0 resources are split between `shared` resources and `local` resources.
 `#[task]`, `#[init]` and `#[idle]` no longer have a `resources` argument; they must now use the `shared` and `local` arguments.
 
 In v0.5.x:
@@ -149,7 +149,7 @@ fn a(_: a::Context) {}
 fn b(_: b::Context) {}
 ```
 
-In v0.6.0:
+In v1.0.0:
 
 ``` rust
 #[shared]
@@ -171,7 +171,10 @@ fn b(_: b::Context) {}
 
 ## Symmetric locks
 
-Now RTIC utilizes symmetric locks, this means that the `lock` method need to be used for all `shared` resource access. In old code one could do the following as the high priority task has exclusive access to the resource:
+Now RTIC utilizes symmetric locks, this means that the `lock` method need
+to be used for all `shared` resource access.
+In old code one could do the following as the high priority
+task has exclusive access to the resource:
 
 ``` rust
 #[task(priority = 2, resources = [r])]
@@ -204,7 +207,7 @@ Note that the performance does not change thanks to LLVM's optimizations which o
 ## Lock-free resource access
 
 In RTIC 0.5 resources shared by tasks running at the same priority could be accessed *without* the `lock` API.
-This is still possible in 0.6: the `#[shared]` resource must be annotated with the field-level `#[lock_free]` attribute.
+This is still possible in 1.0: the `#[shared]` resource must be annotated with the field-level `#[lock_free]` attribute.
 
 v0.5 code:
 
@@ -224,7 +227,7 @@ fn b(cx: b::Context) {
 }
 ```
 
-v0.6 code:
+v1.0 code:
 
 ``` rust
 #[shared]
@@ -259,7 +262,7 @@ fn init(_: init::Context) {
 }
 ```
 
-v0.6.0 code:
+v1.0.0 code:
 
 ``` rust
 #[init(local = [
@@ -313,11 +316,10 @@ mod app {
 }
 ```
 
-## Spawn/schedule from anywhere
+## Spawn from anywhere
 
-With the new "spawn/schedule from anywhere", old code such as:
-
-
+With the new spawn/spawn_after/spawn_at interface,
+old code requiring the context `cx` for spawning such as:
 
 ``` rust
 #[task(spawn = [bar])]
@@ -341,12 +343,20 @@ fn foo(_c: foo::Context) {
 
 #[task]
 fn bar(_c: bar::Context) {
-    foo::schedule(/* ... */).unwrap();
+    // Takes a Duration, relative to “now”
+    let spawn_handle = foo::spawn_after(/* ... */);
+}
+
+#[task]
+fn bar(_c: bar::Context) {
+    // Takes an Instant
+    let spawn_handle = foo::spawn_at(/* ... */);
 }
 ```
 
-Note that the attributes `spawn` and `schedule` are no longer needed.
+Thus the requirement of having access to the context is dropped.
 
+Note that the attributes `spawn`/`schedule` in the task definition are no longer needed.
 
 ---
 
@@ -354,6 +364,7 @@ Note that the attributes `spawn` and `schedule` are no longer needed.
 
 ### Extern tasks
 
-Both software and hardware tasks can now be defined external to the `mod app`. Previously this was possible only by implementing a trampoline calling out the task implementation.
+Both software and hardware tasks can now be defined external to the `mod app`.
+Previously this was possible only by implementing a trampoline calling out the task implementation.
 
 See examples `examples/extern_binds.rs` and `examples/extern_spawn.rs`.

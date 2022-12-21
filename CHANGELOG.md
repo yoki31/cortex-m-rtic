@@ -3,7 +3,103 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+For each category, *Added*, *Changed*, *Fixed* add new entries at the top!
+
 ## [Unreleased]
+
+### Added
+
+- Allow custom `link_section` attributes for late resources
+
+### Fixed
+
+- Use native GHA rustup and cargo
+- Distinguish between thumbv8m.base and thumbv8m.main for basepri usage.
+
+### Changed
+
+- Tuned redirect message for rtic.rs/meeting
+
+## [v1.1.3] - 2022-06-23
+
+### Added
+
+### Fixed
+
+- Bump cortex-m-rtic-macros to 1.1.5
+- fix ci: use SYST::PTR
+
+#### cortex-m-rtic-macros v1.1.5 - 2022-06-23
+
+- Bump rtic-syntax to 1.0.2
+
+#### cortex-m-rtic-macros v1.1.4 - 2022-05-24
+
+- Fix macros to Rust 2021
+
+#### cortex-m-rtic-macros v1.1.3 - 2022-05-24
+
+- Fix clash with defmt
+
+### Changed
+
+## [v1.1.2] - 2022-05-09
+
+### Added
+
+### Fixed
+
+- Generation of masks for the source masking scheduling for thumbv6
+
+### Changed
+
+## [v1.1.1] - 2022-04-13 - YANKED
+
+### Added
+
+### Fixed
+
+- Fixed `marcro` version
+
+### Changed
+
+## [v1.1.0] - 2022-04-13 - YANKED
+
+### Added
+
+- Improve how CHANGELOG.md merges are handled
+- If current $stable and master version matches, dev-book redirects to $stable book
+- During deploy stage, merge master branch into current stable IFF cargo package version matches
+- Rework branch structure, release/vVERSION
+- Cargo clippy in CI
+- Use rust-cache Github Action
+- Support for NVIC based SPR based scheduling for armv6m.
+- CI changelog entry enforcer
+- `examples/periodic-at.rs`, an example of a periodic timer without accumulated drift.
+- `examples/periodic-at2.rs`, an example of a periodic process with two tasks, with offset timing.
+  Here we depict two alternative usages of the timer type, explicit and trait based.
+- book: Update `Monotonic` tips.
+
+### Fixed
+
+- Re-export `rtic_core::prelude` as `rtic::mutex::prelude` to allow glob imports + Clippy
+- Fix all except `must_use` lints from clippy::pedantic
+- Fix dated migration docs for spawn
+- Remove obsolete action-rs tool-cache
+- Force mdBook to return error codes
+- Readded missing ramfunc output to book
+
+### Changed
+
+- Try to detect `target-dir` for rtic-expansion.rs
+
+## [v1.0.0] - 2021-12-25
+
+### Changed
+
+- Bump RTIC dependencies also updated to v1.0.0
+- Edition 2021
+- Change default `idle` behaviour to be `NOP` instead of `WFI`
 
 ## [v0.6.0-rc.4] - 2021-11-09
 
@@ -447,7 +543,12 @@ Yanked due to a soundness issue in `init`; the issue has been mostly fixed in v0
 
 - Initial release
 
-[Unreleased]: https://github.com/rtic-rs/cortex-m-rtic/compare/v0.6.0-rc.4...HEAD
+[Unreleased]: https://github.com/rtic-rs/cortex-m-rtic/compare/v1.1.3...HEAD
+[v1.1.3]: https://github.com/rtic-rs/cortex-m-rtic/compare/v1.1.2...v1.1.3
+[v1.1.2]: https://github.com/rtic-rs/cortex-m-rtic/compare/v1.1.1...v1.1.2
+[v1.1.1]: https://github.com/rtic-rs/cortex-m-rtic/compare/v1.1.0...v1.1.1
+[v1.1.0]: https://github.com/rtic-rs/cortex-m-rtic/compare/v1.0.0...v1.1.0
+[v1.0.0]: https://github.com/rtic-rs/cortex-m-rtic/compare/v0.6.0-rc.4...v1.0.0
 [v0.6.0-rc.4]: https://github.com/rtic-rs/cortex-m-rtic/compare/v0.6.0-rc.3...v0.6.0-rc.4
 [v0.6.0-rc.3]: https://github.com/rtic-rs/cortex-m-rtic/compare/v0.6.0-rc.2...v0.6.0-rc.3
 [v0.6.0-rc.2]: https://github.com/rtic-rs/cortex-m-rtic/compare/v0.6.0-rc.1...v0.6.0-rc.2
